@@ -7,12 +7,11 @@ import (
 	"syscall"
 )
 
-// docker           run image <CMD> <ARG>
+// docker            run image <CMD> <ARG>
 // go run main.go   run       <CMD> <ARG>
 
-// Step4: 컨테이너 환경 시작시 호스트명을 container로 변경.
-// $ go run . run /bin/sh
-// $ hostname
+// Step5: 컨테이너 환경에서 ps명령 실행 시 제한된 프로세스 정보만 조회. 루트 파일 시스템 변경.
+//        실습으로 ps, cat /os-release 명령 실행.
 
 func main() {
 	switch os.Args[1] {
@@ -26,25 +25,30 @@ func main() {
 }
 
 func run() {
-	fmt.Printf("Running: %v\n", os.Args[2:])
-	// cmd := exec.Command(os.Args[2], os.Args[3:]...)
+	fmt.Printf("Running: %v as %d\n", os.Args[2:], os.Getpid())
 	cmd := exec.Command("/proc/self/exe", append([]string{"child"}, os.Args[2:]...)...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 
+	// new UTS/PID/Mount namespace
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags: syscall.CLONE_NEWUTS,
+		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWNS | syscall.CLONE_NEWPID,
 	}
 
 	must(cmd.Run())
 }
 
 func child() {
-	fmt.Printf("Running child: %v\n", os.Args[2:])
+	fmt.Printf("Running child: %v as %d\n", os.Args[2:], os.Getpid())
 
 	// hostname 설정
-	syscall.Sethostname([]byte("fake-container"))
+	must(syscall.Sethostname([]byte("fake-container")))
+
+	syscall.Chroot("/tmp/ubuntu")
+	syscall.Chdir("/")
+	syscall.Mount("proc", "proc", "proc", 0, "")
+	defer syscall.Unmount("proc", 0)
 
 	cmd := exec.Command(os.Args[2], os.Args[3:]...)
 	cmd.Stderr = os.Stderr
@@ -52,6 +56,7 @@ func child() {
 	cmd.Stdout = os.Stdout
 
 	must(cmd.Run())
+
 }
 
 func must(err error) {
