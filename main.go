@@ -32,6 +32,6 @@ func run() {
 
 func must(err error) {
 	if err != nil {
-		panic(err)
+		panic(err)d
 	}
 }
