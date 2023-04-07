@@ -7,12 +7,6 @@ import (
 	"syscall"
 )
 
-// docker            run image <CMD> <ARG>
-// go run main.go   run       <CMD> <ARG>
-
-// Step5: 컨테이너 환경에서 ps명령 실행 시 제한된 프로세스 정보만 조회. 루트 파일 시스템 변경.
-//        실습으로 ps, cat /os-release 명령 실행.
-
 func main() {
 	switch os.Args[1] {
 	case "run":
